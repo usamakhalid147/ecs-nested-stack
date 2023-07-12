@@ -1,0 +1,2 @@
+The Gateway Server is currently encountering an error related to the Config Server, despite the Config Server itself running smoothly and being accessible on port 8071. It is functioning properly and allowing GUI access on port 8080.
+the Config Server and Eureka container are running fine, and we can successfully access their respective interfaces. However, the Gateway Server is displaying an error related to the Config Server, while the Genesis service is encountering a database error.
