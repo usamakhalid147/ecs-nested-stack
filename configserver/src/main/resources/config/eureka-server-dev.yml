@@ -1,0 +1,20 @@
+
+server:
+  port: 8070
+eureka:
+  instance:
+    # change it with dev env host
+    hostname: localhost
+  client:
+    registerWithEureka: false
+    fetchRegistry: false
+    serviceUrl:
+      defaultZone: http://${eureka.instance.hostname}/eureka
+  server:
+    waitTimeInMsWhenSyncEmpty: 5
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"

@@ -1,0 +1,36 @@
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    # provide dev env db url
+    url: jdbc:postgresql://hostUrl/acima_dev_dbname
+    # provide dev env db username
+    username: acima_db_username
+    # provide dev env db password
+    password: acima_db_password
+  jpa:
+    hibernate:
+      ddl-auto: update
+    #show-sql: true
+
+server:
+  port: 8073
+
+eureka:
+  instance:
+    preferIpAddress: true
+  client:
+    registerWithEureka: true
+    fetchRegistry: true
+    serviceUrl:
+      # change it with dev env eureka url
+      defaultZone: http://localhost:8070/eureka
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+
+
+
+
