@@ -2,6 +2,10 @@ AWSTemplateFormatVersion: "2010-09-09"
 
 Description: |
   ECS Cluster
+Parameters:
+  VpcId:
+    Description: The ID of the existing VPC
+    Type: String
 
 Resources:
   FargateSecurityGroup:
