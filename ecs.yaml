@@ -1,0 +1,490 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: |
+  ECS Cluster
+
+Parameters:
+  VpcId:
+    Description: Create ECS cluster in this VPC
+    Type: AWS::EC2::VPC::Id
+
+  AlbSubnets:
+    Description: Create external-facing load balancer in these subnets.
+    Type: List<AWS::EC2::Subnet::Id>
+
+  EcsHostSubnets:
+    Description: Create ECS Cluster Hosts in these subnets.
+    Type: List<AWS::EC2::Subnet::Id>
+
+  InstanceType:
+    Type: String
+    Default: "t2.nano"
+
+  EnvironmentName:
+    Type: List<String>
+    Default: 
+      - prod
+      - dev
+      - staging
+
+  ClusterSize:
+    Description: How many ECS hosts do you want to initially deploy?
+    Type: Number
+    Default: 1
+
+  MinInstanceNo:
+    Description: Minimum number of instances
+    Type: Number
+    Default: 1
+
+  MaxInstanceNo:
+    Description: Maximum number of instances
+    Type: Number
+    Default: 4
+
+  DesiredInstanceNo:
+    Description: Desired number of instances
+    Type: Number
+    Default: 1
+
+  LoadbalancerName:
+    Description: load balancer name 
+    Type: String
+    Default: "network-lb"
+
+  FargateServiceName:
+    Description: name for fargate service 
+    Type: String
+    Default: "fargate-service"
+
+  FargateServiceDesiredCount:
+    Description: Number of tasks for fargate service 
+    Type: Number
+    Default: 1
+
+  FargateContainerUrl:
+    Description: name for fargate service 
+    Type: String
+    Default: "nginx:latest"
+
+  FargateTaskDefinitionName:
+    Description: name for fargate service 
+    Type: String
+    Default: "fargate-nginx-task"
+
+  MyServiceName:
+    Description: name for fargate service 
+    Type: String
+    Default: "nginx-service"
+
+  NginxServiceDesiredCount:
+    Description: Number of tasks for nginx service 
+    Type: Number
+    Default: 1
+
+  NginxContainerUrl:
+    Description: name for fargate service 
+    Type: String
+    Default: "nginx:latest"
+
+  NginxTaskDefinitionName:
+    Description: name for fargate service 
+    Type: String
+    Default: "nginx-task"
+
+  KeyName:
+    Description: SSH Keyname for access to ECS Cluster hosts
+    Type: AWS::EC2::KeyPair::KeyName
+
+Mappings:
+  AWSRegionToAMI:
+    us-east-1:
+      AMI: ami-04351e12
+    us-west-2:
+      AMI: ami-57d9cd2e
+
+Resources:
+  AlbSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: !Sub ${AWS::StackName}-NLB
+      SecurityGroupIngress:
+        - CidrIp: "0.0.0.0/0"
+          IpProtocol: "TCP"
+          FromPort: 80
+          ToPort: 80
+      VpcId: !Ref VpcId
+      Tags:
+        - Key: environment
+          Value: !Ref EnvironmentName
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Type: "network"
+      Subnets: !Ref AlbSubnets
+      Scheme: "internet-facing"
+      Tags:
+        - Key: environment
+          Value: !Ref EnvironmentName
+        - Key: Name
+          Value: !Ref LoadbalancerName
+
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn: LoadBalancer
+    Properties:
+      VpcId: !Ref VpcId
+      Port: 80
+      Protocol: TCP
+      TargetType: ip  # Change target type to ip
+      HealthCheckIntervalSeconds: 30
+      HealthCheckProtocol: TCP
+      HealthCheckTimeoutSeconds: 10
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 3
+      Tags:
+        - Key: environment
+          Value: !Ref EnvironmentName
+
+  LoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: TCP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+  EcsHostSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: !Sub ${AWS::StackName}-EcsHosts
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !Ref AlbSecurityGroup
+          IpProtocol: -1
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: environment
+          Value: !Ref EnvironmentName
+
+
+  ECSRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "ec2.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+        - arn:aws:iam::aws:policy/AmazonRDSFullAccess
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/AmazonECS_FullAccess
+        - "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+        - "arn:aws:iam::aws:policy/AmazonElasticFileSystemFullAccess"
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - !Ref ECSRole
+    # Tags:
+    #   - Key: environment
+    #     Value: !Ref EnvironmentName
+
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Ref AWS::StackName
+    # Tags:
+    #   - Key: environment
+    #     Value: !Ref EnvironmentName
+
+  LaunchConfiguration:
+      Type: AWS::AutoScaling::LaunchConfiguration
+      Properties:
+        ImageId: !FindInMap [ AWSRegionToAMI, !Ref "AWS::Region", AMI ]
+        InstanceType: !Ref InstanceType
+        IamInstanceProfile: !Ref InstanceProfile
+        KeyName: !Ref KeyName
+        SecurityGroups:
+          - !Ref EcsHostSecurityGroup
+        UserData:
+          "Fn::Base64": !Sub |
+            #!/usr/bin/env bash
+            set -o nounset
+            set -o pipefail
+            set -o errexit
+
+            yum -yq install aws-cfn-bootstrap
+            /opt/aws/bin/cfn-init -v --region ${AWS::Region} --stack ${AWS::StackName} --resource LaunchConfiguration
+            /opt/aws/bin/cfn-signal -e $? --region ${AWS::Region} --stack ${AWS::StackName} --resource AutoScalingGroup
+      Metadata:
+        AWS::CloudFormation::Init:
+          config:
+            commands:
+              01_add_instance_to_cluster:
+                  command: !Sub echo ECS_CLUSTER=${Cluster} >> /etc/ecs/ecs.config
+
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier: !Ref EcsHostSubnets
+      LaunchConfigurationName: !Ref LaunchConfiguration
+      MinSize: !Ref MinInstanceNo
+      MaxSize: !Ref MaxInstanceNo
+      DesiredCapacity: !Ref DesiredInstanceNo
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName} - ECS Host
+          PropagateAtLaunch: true
+    # CreationPolicy:
+    #   ResourceSignal:
+    #     Timeout: PT15M
+    # UpdatePolicy:
+    #   AutoScalingRollingUpdate:
+    #     MinInstancesInService: 1
+    #     MaxBatchSize: 1
+    #     PauseTime: PT15M
+    #     WaitOnResourceSignals: true
+  
+  ECSServiceRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ["ecs-tasks.amazonaws.com"]
+            Action: ['sts:AssumeRole']
+      Path: "/"
+      ManagedPolicyArns: 
+        - "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceRole"
+        - "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+        - "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonRDSFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+        - "arn:aws:iam::aws:policy/AmazonECS_FullAccess"
+        - "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+        - "arn:aws:iam::aws:policy/AmazonElasticFileSystemFullAccess"
+
+  MyECSService:
+    Type: AWS::ECS::Service
+    DependsOn: LoadBalancerListener
+    Properties:
+      ServiceName: !Ref MyServiceName
+      Cluster: !Ref Cluster
+      DesiredCount: !Ref NginxServiceDesiredCount
+      TaskDefinition: !Ref MyTaskDefinition
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          Subnets: !Ref EcsHostSubnets  # Specify your subnets here
+          SecurityGroups: 
+            - !GetAtt EcsHostSecurityGroup.GroupId  # Specify your security groups here
+      LoadBalancers:
+        - TargetGroupArn: !Ref TargetGroup
+          ContainerName: MyContainer
+          ContainerPort: 80
+    # Tags:
+    #   - Key: environment
+    #     Value: !Ref EnvironmentName
+
+
+  NginxTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Ref NginxTaskDefinitionName 
+      ContainerDefinitions:
+        - Name: MyContainer
+          Image: !Ref NginxContainerUrl
+          Essential: true
+          Memory: 300
+          Cpu: 256  # Add this line to set CPU value
+          PortMappings:
+            - ContainerPort: 80
+      NetworkMode: awsvpc  # Change this line to set network type to awsvpc
+      RequiresCompatibilities:
+        - EC2
+      ExecutionRoleArn: !GetAtt ECSServiceRole.Arn
+    # Tags:
+    #   - Key: environment
+    #     Value: !Ref EnvironmentName
+
+  ECSServiceScalableTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    DependsOn: MyECSService
+    Properties:
+      MaxCapacity: 4
+      MinCapacity: 1
+      ResourceId: !Sub service/${Cluster}/${MyServiceName}
+      RoleARN: !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+
+  ECSServiceScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: ECSServiceScalingPolicy
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref ECSServiceScalableTarget
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 80.0
+        ScaleInCooldown: 60
+        ScaleOutCooldown: 60
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ECSServiceAverageCPUUtilization
+
+
+  FargateSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: !Sub ${AWS::StackName}-FargateService
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: 0.0.0.0/0  # Allow incoming traffic on port 80
+        - IpProtocol: tcp
+          FromPort: '2049'
+          ToPort: '2049'
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: environment
+          Value: !Ref EnvironmentName
+
+  EfsSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: !Sub ${AWS::StackName}-EFSSecurityGroup
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:  # Allow inbound connections on port 2049 (NFS)
+        - IpProtocol: tcp
+          FromPort: '2049'
+          ToPort: '2049'
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: environment
+          Value: !Ref EnvironmentName
+
+  EFSFileSystem:
+    Type: "AWS::EFS::FileSystem"
+    Properties:
+      Encrypted: true
+      PerformanceMode: generalPurpose
+      FileSystemTags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-efs
+        - Key: environment
+          Value: !Ref EnvironmentName
+
+  EFSMountTargetA:
+    Type: "AWS::EFS::MountTarget"
+    Properties:
+      FileSystemId: !Ref EFSFileSystem
+      SubnetId: !Select [ 0, !Ref EcsHostSubnets ]  # add mount target to the first subnet
+      SecurityGroups: [!GetAtt EfsSecurityGroup.GroupId]
+
+  FargateTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Ref FargateTaskDefinitionName 
+      ContainerDefinitions:
+        - Name: MyContainerfargate
+          Image: !Ref FargateContainerUrl
+          Essential: true
+          Memory: 300
+          Cpu: 256
+          PortMappings:
+            - ContainerPort: 80
+          MountPoints:  # Add a mount point for the EFS volume
+            - ContainerPath: "/efs"
+              SourceVolume: "efs"
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !GetAtt ECSServiceRole.Arn
+      Cpu: '256'
+      Memory: '0.5GB'
+      Volumes:  # Define the EFS volume
+        - Name: "efs"
+          EFSVolumeConfiguration:
+            FilesystemId: !Ref EFSFileSystem
+            RootDirectory: "/"
+            TransitEncryption: 'ENABLED'
+      TaskRoleArn: !GetAtt ECSServiceRole.Arn
+    # Tags:
+    #   - Key: environment
+    #     Value: !Ref EnvironmentName
+
+  FargateService:
+    Type: AWS::ECS::Service
+    DependsOn: LoadBalancerListener
+    Properties:
+      ServiceName: !Ref FargateServiceName
+      Cluster: !Ref Cluster
+      DesiredCount: !Ref FargateServiceDesiredCount
+      TaskDefinition: !Ref FargateTaskDefinition
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          Subnets: !Ref EcsHostSubnets
+          SecurityGroups: 
+            - !GetAtt FargateSecurityGroup.GroupId  # Use the newly created Fargate security group
+          AssignPublicIp: ENABLED
+      LaunchType: FARGATE
+      LoadBalancers:
+        - TargetGroupArn: !Ref TargetGroup
+          ContainerName: MyContainerfargate
+          ContainerPort: 80
+    # Tags:
+    #   - Key: environment
+    #     Value: !Ref EnvironmentName
+
+  FargateServiceScalableTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    DependsOn: FargateService
+    Properties:
+      MaxCapacity: 4
+      MinCapacity: 1
+      ResourceId: !Sub service/${Cluster}/${FargateServiceName}
+      RoleARN: !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+
+  FargateServiceScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: FargateServiceScalingPolicy
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref FargateServiceScalableTarget
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 80.0
+        ScaleInCooldown: 60
+        ScaleOutCooldown: 60
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ECSServiceAverageCPUUtilization
+
+Outputs:
+  ClusterName:
+      Value: !Ref Cluster

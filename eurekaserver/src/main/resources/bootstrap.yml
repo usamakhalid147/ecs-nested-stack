@@ -1,9 +1,0 @@
-spring:
-  application:
-    name: eureka-server
-  profiles:
-    # choose profile as per need such as local, dev
-    active: local
-  config:
-    # change the config server url as per env such as local, dev
-    import: optional:configserver:http://localhost:8071
