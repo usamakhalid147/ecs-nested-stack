@@ -1,0 +1,69 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: |
+  ECS Cluster
+
+Parameters:
+
+  LoadbalancerName:
+    Description: load balancer name 
+    Type: String
+    Default: "network-lb"
+    
+  EnvironmentName:
+    Type: String
+    Default: "prod"
+Resources:
+  AlbSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: !Sub ${AWS::StackName}-NLB
+      SecurityGroupIngress:
+        - CidrIp: "0.0.0.0/0"
+          IpProtocol: "TCP"
+          FromPort: 80
+          ToPort: 80
+      VpcId: !Ref VpcId
+      Tags:
+        - Key: environment
+          Value: !Ref EnvironmentName
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Type: "network"
+      Subnets: !Ref AlbSubnets
+      Scheme: "internet-facing"
+      Tags:
+        - Key: environment
+          Value: !Ref EnvironmentName
+        - Key: Name
+          Value: !Ref LoadbalancerName
+
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn: LoadBalancer
+    Properties:
+      VpcId: !Ref VpcId
+      Port: 80
+      Protocol: TCP
+      TargetType: ip  # Change target type to ip
+      HealthCheckIntervalSeconds: 30
+      HealthCheckProtocol: TCP
+      HealthCheckTimeoutSeconds: 10
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 3
+      Tags:
+        - Key: environment
+          Value: !Ref EnvironmentName
+
+  LoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: TCP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup

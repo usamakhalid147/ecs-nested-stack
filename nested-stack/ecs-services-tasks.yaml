@@ -1,0 +1,202 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: |
+  ECS Cluster
+
+Parameters:
+
+  FargateServiceName:
+    Description: name for fargate service 
+    Type: String
+    Default: "fargate-service"
+
+  FargateServiceDesiredCount:
+    Description: Number of tasks for fargate service 
+    Type: Number
+    Default: 1
+
+  FargateContainerUrl:
+    Description: name for fargate service 
+    Type: String
+    Default: "nginx:latest"
+
+  FargateTaskDefinitionName:
+    Description: name for fargate service 
+    Type: String
+    Default: "fargate-nginx-task"
+
+  MyServiceName:
+    Description: name for fargate service 
+    Type: String
+    Default: "nginx-service"
+
+  NginxServiceDesiredCount:
+    Description: Number of tasks for nginx service 
+    Type: Number
+    Default: 1
+
+  NginxContainerUrl:
+    Description: name for fargate service 
+    Type: String
+    Default: "nginx:latest"
+
+  NginxTaskDefinitionName:
+    Description: name for fargate service 
+    Type: String
+    Default: "nginx-task"
+
+Resources:
+  ECSServiceRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ["ecs-tasks.amazonaws.com"]
+            Action: ['sts:AssumeRole']
+      Path: "/"
+      ManagedPolicyArns: 
+        - "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceRole"
+        - "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+        - "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonRDSFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+        - "arn:aws:iam::aws:policy/AmazonECS_FullAccess"
+        - "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+        - "arn:aws:iam::aws:policy/AmazonElasticFileSystemFullAccess"
+
+  MyECSService:
+    Type: AWS::ECS::Service
+    DependsOn: LoadBalancerListener
+    Properties:
+      ServiceName: !Ref MyServiceName
+      Cluster: !Ref Cluster
+      DesiredCount: !Ref NginxServiceDesiredCount
+      TaskDefinition: !Ref NginxTaskDefinition
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          Subnets: !Ref EcsHostSubnets  # Specify your subnets here
+          SecurityGroups: 
+            - !GetAtt EcsHostSecurityGroup.GroupId  # Specify your security groups here
+      LoadBalancers:
+        - TargetGroupArn: !Ref TargetGroup
+          ContainerName: MyContainer
+          ContainerPort: 80
+
+
+
+  NginxTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Ref NginxTaskDefinitionName 
+      ContainerDefinitions:
+        - Name: MyContainer
+          Image: !Ref NginxContainerUrl
+          Essential: true
+          Memory: 300
+          Cpu: 256  # Add this line to set CPU value
+          PortMappings:
+            - ContainerPort: 80
+      NetworkMode: awsvpc  # Change this line to set network type to awsvpc
+      RequiresCompatibilities:
+        - EC2
+      ExecutionRoleArn: !GetAtt ECSServiceRole.Arn
+
+
+  ECSServiceScalableTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    DependsOn: MyECSService
+    Properties:
+      MaxCapacity: 4
+      MinCapacity: 1
+      ResourceId: !Sub service/${Cluster}/${MyServiceName}
+      RoleARN: !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+
+  ECSServiceScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: ECSServiceScalingPolicy
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref ECSServiceScalableTarget
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 80.0
+        ScaleInCooldown: 60
+        ScaleOutCooldown: 60
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ECSServiceAverageCPUUtilization
+  FargateTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Ref FargateTaskDefinitionName 
+      ContainerDefinitions:
+        - Name: MyContainerfargate
+          Image: !Ref FargateContainerUrl
+          Essential: true
+          Memory: 300
+          Cpu: 256
+          PortMappings:
+            - ContainerPort: 80
+          MountPoints:  # Add a mount point for the EFS volume
+            - ContainerPath: "/efs"
+              SourceVolume: "efs"
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !GetAtt ECSServiceRole.Arn
+      Cpu: '256'
+      Memory: '0.5GB'
+      Volumes:  # Define the EFS volume
+        - Name: "efs"
+          EFSVolumeConfiguration:
+            FilesystemId: !Ref EFSFileSystem
+            RootDirectory: "/"
+            TransitEncryption: 'ENABLED'
+      TaskRoleArn: !GetAtt ECSServiceRole.Arn
+
+  FargateService:
+    Type: AWS::ECS::Service
+    DependsOn: LoadBalancerListener
+    Properties:
+      ServiceName: !Ref FargateServiceName
+      Cluster: !Ref Cluster
+      DesiredCount: !Ref FargateServiceDesiredCount
+      TaskDefinition: !Ref FargateTaskDefinition
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          Subnets: !Ref EcsHostSubnets
+          SecurityGroups: 
+            - !GetAtt FargateSecurityGroup.GroupId  # Use the newly created Fargate security group
+          AssignPublicIp: ENABLED
+      LaunchType: FARGATE
+      LoadBalancers:
+        - TargetGroupArn: !Ref TargetGroup
+          ContainerName: MyContainerfargate
+          ContainerPort: 80
+
+
+  FargateServiceScalableTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    DependsOn: FargateService
+    Properties:
+      MaxCapacity: 4
+      MinCapacity: 1
+      ResourceId: !Sub service/${Cluster}/${FargateServiceName}
+      RoleARN: !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+
+  FargateServiceScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: FargateServiceScalingPolicy
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref FargateServiceScalableTarget
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 80.0
+        ScaleInCooldown: 60
+        ScaleOutCooldown: 60
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ECSServiceAverageCPUUtilization

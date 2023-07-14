@@ -1,0 +1,151 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: |
+  Vpc and subnets
+
+Parameters:
+  ClusterName:
+    Type: String
+    Default: "prod-ecs-cluster"
+
+  EnvironmentName:
+    Type: String
+    Default: "prod"
+
+  ClusterSize:
+    Description: How many ECS hosts do you want to initially deploy?
+    Type: Number
+    Default: 1
+
+  MinInstanceNo:
+    Description: Minimum number of instances
+    Type: Number
+    Default: 1
+
+  MaxInstanceNo:
+    Description: Maximum number of instances
+    Type: Number
+    Default: 4
+
+  DesiredInstanceNo:
+    Description: Desired number of instances
+    Type: Number
+    Default: 1
+  InstanceType:
+    Type: String
+    Default: "t2.nano"
+  KeyName:
+    Description: SSH Keyname for access to ECS Cluster hosts
+    Type: AWS::EC2::KeyPair::KeyName
+
+Mappings:
+  AWSRegionToAMI:
+    us-east-1:
+      AMI: ami-04351e12
+    us-west-2:
+      AMI: ami-57d9cd2e
+
+Resources:
+  ECSRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "ec2.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+        - arn:aws:iam::aws:policy/AmazonRDSFullAccess
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/AmazonECS_FullAccess
+        - "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+        - "arn:aws:iam::aws:policy/AmazonElasticFileSystemFullAccess"
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - !Ref ECSRole
+
+  EcsHostSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: !Sub ${AWS::StackName}-EcsHosts
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !Ref AlbSecurityGroup
+          IpProtocol: -1
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: environment
+          Value: !Ref EnvironmentName
+
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Ref ClusterName
+
+  LaunchConfiguration:
+      Type: AWS::AutoScaling::LaunchConfiguration
+      Properties:
+        ImageId: !FindInMap [ AWSRegionToAMI, !Ref "AWS::Region", AMI ]
+        InstanceType: !Ref InstanceType
+        IamInstanceProfile: !Ref InstanceProfile
+        KeyName: !Ref KeyName
+        SecurityGroups:
+          - !Ref EcsHostSecurityGroup
+        UserData:
+          "Fn::Base64": !Sub |
+            #!/usr/bin/env bash
+            set -o nounset
+            set -o pipefail
+            set -o errexit
+
+            yum -yq install aws-cfn-bootstrap
+            /opt/aws/bin/cfn-init -v --region ${AWS::Region} --stack ${AWS::StackName} --resource LaunchConfiguration
+            /opt/aws/bin/cfn-signal -e $? --region ${AWS::Region} --stack ${AWS::StackName} --resource AutoScalingGroup
+      Metadata:
+        AWS::CloudFormation::Init:
+          config:
+            commands:
+              01_add_instance_to_cluster:
+                  command: !Sub echo ECS_CLUSTER=${Cluster} >> /etc/ecs/ecs.config
+
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier: !Ref EcsHostSubnets
+      LaunchConfigurationName: !Ref LaunchConfiguration
+      MinSize: !Ref MinInstanceNo
+      MaxSize: !Ref MaxInstanceNo
+      DesiredCapacity: !Ref DesiredInstanceNo
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName} - ECS Host
+          PropagateAtLaunch: true
+    # CreationPolicy:
+    #   ResourceSignal:
+    #     Timeout: PT15M
+    # UpdatePolicy:
+    #   AutoScalingRollingUpdate:
+    #     MinInstancesInService: 1
+    #     MaxBatchSize: 1
+    #     PauseTime: PT15M
+    #     WaitOnResourceSignals: true

@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  VPCStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.amazonaws.com/mybucket/vpc.yaml
+      Parameters:
+        VpcId: <VpcId>
+        AlbSubnets: <AlbSubnets>
+        EcsHostSubnets: <EcsHostSubnets>
+
+  ECSClusterStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.amazonaws.com/mybucket/ecs-cluster.yaml
+      Parameters:
+        ClusterName: <ClusterName>
+        InstanceType: <InstanceType>
+        KeyName: <KeyName>
+        MinInstanceNo: <MinInstanceNo>
+        MaxInstanceNo: <MaxInstanceNo>
+        DesiredInstanceNo: <DesiredInstanceNo>
+
+  LoadBalancerStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.amazonaws.com/mybucket/load-balancer.yaml
+      Parameters:
+        LoadbalancerName: <LoadbalancerName>
+
+  ECSServicesTasksStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.amazonaws.com/mybucket/ecs-services-tasks.yaml
+      Parameters:
+        FargateServiceName: <FargateServiceName>
+        FargateServiceDesiredCount: <FargateServiceDesiredCount>
+        FargateContainerUrl: <FargateContainerUrl>
+        FargateTaskDefinitionName: <FargateTaskDefinitionName>
+        MyServiceName: <MyServiceName>
+        NginxServiceDesiredCount: <NginxServiceDesiredCount>
+        NginxContainerUrl: <NginxContainerUrl>
+        NginxTaskDefinitionName: <NginxTaskDefinitionName>
+
+  EFSStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.amazonaws.com/mybucket/efs.yaml
