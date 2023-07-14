@@ -21,11 +21,12 @@ Parameters:
     Default: "t2.nano"
 
   EnvironmentName:
-    Type: List<String>
-    Default: 
-      - prod
-      - dev
-      - staging
+    Type: String
+    Default: "prod"
+
+  ClusterName:
+    Type: String
+    Default: "prod-ecs-cluster"
 
   ClusterSize:
     Description: How many ECS hosts do you want to initially deploy?
@@ -209,17 +210,12 @@ Resources:
       Path: /
       Roles:
         - !Ref ECSRole
-    # Tags:
-    #   - Key: environment
-    #     Value: !Ref EnvironmentName
+
 
   Cluster:
     Type: AWS::ECS::Cluster
     Properties:
-      ClusterName: !Ref AWS::StackName
-    # Tags:
-    #   - Key: environment
-    #     Value: !Ref EnvironmentName
+      ClusterName: !Ref ClusterName
 
   LaunchConfiguration:
       Type: AWS::AutoScaling::LaunchConfiguration
@@ -296,7 +292,7 @@ Resources:
       ServiceName: !Ref MyServiceName
       Cluster: !Ref Cluster
       DesiredCount: !Ref NginxServiceDesiredCount
-      TaskDefinition: !Ref MyTaskDefinition
+      TaskDefinition: !Ref NginxTaskDefinition
       NetworkConfiguration:
         AwsvpcConfiguration:
           Subnets: !Ref EcsHostSubnets  # Specify your subnets here
@@ -306,9 +302,7 @@ Resources:
         - TargetGroupArn: !Ref TargetGroup
           ContainerName: MyContainer
           ContainerPort: 80
-    # Tags:
-    #   - Key: environment
-    #     Value: !Ref EnvironmentName
+
 
 
   NginxTaskDefinition:
@@ -327,9 +321,7 @@ Resources:
       RequiresCompatibilities:
         - EC2
       ExecutionRoleArn: !GetAtt ECSServiceRole.Arn
-    # Tags:
-    #   - Key: environment
-    #     Value: !Ref EnvironmentName
+
 
   ECSServiceScalableTarget:
     Type: AWS::ApplicationAutoScaling::ScalableTarget
@@ -434,9 +426,6 @@ Resources:
             RootDirectory: "/"
             TransitEncryption: 'ENABLED'
       TaskRoleArn: !GetAtt ECSServiceRole.Arn
-    # Tags:
-    #   - Key: environment
-    #     Value: !Ref EnvironmentName
 
   FargateService:
     Type: AWS::ECS::Service
@@ -457,9 +446,7 @@ Resources:
         - TargetGroupArn: !Ref TargetGroup
           ContainerName: MyContainerfargate
           ContainerPort: 80
-    # Tags:
-    #   - Key: environment
-    #     Value: !Ref EnvironmentName
+
 
   FargateServiceScalableTarget:
     Type: AWS::ApplicationAutoScaling::ScalableTarget
