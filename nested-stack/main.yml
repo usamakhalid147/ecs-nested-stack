@@ -1,46 +1,88 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Resources:
-  VPCStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: https://s3.amazonaws.com/mybucket/vpc.yaml
-      Parameters:
-        VpcId: <VpcId>
-        AlbSubnets: <AlbSubnets>
-        EcsHostSubnets: <EcsHostSubnets>
-
   ECSClusterStack:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: https://s3.amazonaws.com/mybucket/ecs-cluster.yaml
       Parameters:
-        ClusterName: <ClusterName>
-        InstanceType: <InstanceType>
-        KeyName: <KeyName>
-        MinInstanceNo: <MinInstanceNo>
-        MaxInstanceNo: <MaxInstanceNo>
-        DesiredInstanceNo: <DesiredInstanceNo>
+        ClusterName:
+          Type: String
+          Default: "prod-ecs-cluster"
+        InstanceType:
+          Type: String
+          Default: "t2.nano"
+        KeyName:
+          Description: SSH Keyname for access to ECS Cluster hosts
+          Type: AWS::EC2::KeyPair::KeyName
+        MinInstanceNo:
+          Description: Minimum number of instances
+          Type: Number
+          Default: 1
+
+        MaxInstanceNo:
+          Description: Maximum number of instances
+          Type: Number
+          Default: 4
+
+        DesiredInstanceNo:
+          Description: Desired number of instances
+          Type: Number
+          Default: 1
 
   LoadBalancerStack:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: https://s3.amazonaws.com/mybucket/load-balancer.yaml
       Parameters:
-        LoadbalancerName: <LoadbalancerName>
+        LoadbalancerName:
+          Description: load balancer name 
+          Type: String
+          Default: "network-lb"
 
   ECSServicesTasksStack:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: https://s3.amazonaws.com/mybucket/ecs-services-tasks.yaml
       Parameters:
-        FargateServiceName: <FargateServiceName>
-        FargateServiceDesiredCount: <FargateServiceDesiredCount>
-        FargateContainerUrl: <FargateContainerUrl>
-        FargateTaskDefinitionName: <FargateTaskDefinitionName>
-        MyServiceName: <MyServiceName>
-        NginxServiceDesiredCount: <NginxServiceDesiredCount>
-        NginxContainerUrl: <NginxContainerUrl>
-        NginxTaskDefinitionName: <NginxTaskDefinitionName>
+        FargateServiceName:
+          Description: name for fargate service 
+          Type: String
+          Default: "fargate-service"
+
+        FargateServiceDesiredCount:
+          Description: Number of tasks for fargate service 
+          Type: Number
+          Default: 1
+
+        FargateContainerUrl:
+          Description: name for fargate service 
+          Type: String
+          Default: "nginx:latest"
+
+        FargateTaskDefinitionName:
+          Description: name for fargate service 
+          Type: String
+          Default: "fargate-nginx-task"
+
+        MyServiceName:
+          Description: name for fargate service 
+          Type: String
+          Default: "nginx-service"
+
+        NginxServiceDesiredCount:
+          Description: Number of tasks for nginx service 
+          Type: Number
+          Default: 1
+
+        NginxContainerUrl:
+          Description: name for fargate service 
+          Type: String
+          Default: "nginx:latest"
+
+        NginxTaskDefinitionName:
+          Description: name for fargate service 
+          Type: String
+          Default: "nginx-task"
 
   EFSStack:
     Type: AWS::CloudFormation::Stack
