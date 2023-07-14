@@ -77,6 +77,20 @@ Resources:
       Roles:
         - !Ref ECSRole
 
+  AlbSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: !Sub ${AWS::StackName}-NLB
+      SecurityGroupIngress:
+        - CidrIp: "0.0.0.0/0"
+          IpProtocol: "TCP"
+          FromPort: 80
+          ToPort: 80
+      VpcId: !Ref VpcId
+      Tags:
+        - Key: environment
+          Value: !Ref EnvironmentName
+          
   EcsHostSecurityGroup:
     Type: "AWS::EC2::SecurityGroup"
     Properties:

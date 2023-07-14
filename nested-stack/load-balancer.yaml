@@ -9,25 +9,11 @@ Parameters:
     Description: load balancer name 
     Type: String
     Default: "network-lb"
-    
+
   EnvironmentName:
     Type: String
     Default: "prod"
 Resources:
-  AlbSecurityGroup:
-    Type: "AWS::EC2::SecurityGroup"
-    Properties:
-      GroupDescription: !Sub ${AWS::StackName}-NLB
-      SecurityGroupIngress:
-        - CidrIp: "0.0.0.0/0"
-          IpProtocol: "TCP"
-          FromPort: 80
-          ToPort: 80
-      VpcId: !Ref VpcId
-      Tags:
-        - Key: environment
-          Value: !Ref EnvironmentName
-
   LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
