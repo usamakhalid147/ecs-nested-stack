@@ -6,6 +6,11 @@ Parameters:
   VpcId:
     Description: The ID of the existing VPC
     Type: String
+  EcsHostSubnets:
+    Description: The IDs of the existing subnets
+    Type: List<AWS::EC2::Subnet::Id>
+  EnvironmentName:
+    Type: String
 
 Resources:
   FargateSecurityGroup:

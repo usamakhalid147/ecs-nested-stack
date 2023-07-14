@@ -9,6 +9,9 @@ Parameters:
   EcsHostSubnets:
     Description: Create ECS Cluster Hosts in these subnets.
     Type: List<AWS::EC2::Subnet::Id>
+  AlbSubnets:
+    Description: Create external-facing load balancer in these subnets.
+    Type: List<AWS::EC2::Subnet::Id>
 
 Resources:
   ECSClusterStack:
@@ -32,6 +35,7 @@ Resources:
       Parameters:
         VpcId: !Ref VpcId
         LoadbalancerName: "network-lb"
+        AlbSubnets: !Ref AlbSubnets
 
   ECSServicesTasksStack:
     Type: AWS::CloudFormation::Stack
@@ -62,4 +66,4 @@ Resources:
       Parameters:
         VpcId: !Ref VpcId
         EnvironmentName: "prod"
-        EcsHostSubnets: !Ref EcsHostSubnets
+        EcsHostSubnets: !Join [",", !Ref EcsHostSubnets]

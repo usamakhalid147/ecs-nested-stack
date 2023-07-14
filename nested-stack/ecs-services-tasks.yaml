@@ -4,6 +4,10 @@ Description: |
   ECS Cluster
 
 Parameters:
+Parameters:
+  VpcId:
+    Description: The ID of the existing VPC
+    Type: AWS::EC2::VPC::Id
 
   FargateServiceName:
     Description: name for fargate service 

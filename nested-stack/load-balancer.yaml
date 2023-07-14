@@ -4,6 +4,13 @@ Description: |
   ECS Cluster
 
 Parameters:
+Parameters:
+  VpcId:
+    Description: The ID of the existing VPC
+    Type: AWS::EC2::VPC::Id
+  AlbSubnets:
+    Description: Create external-facing load balancer in these subnets.
+    Type: List<AWS::EC2::Subnet::Id>
 
   LoadbalancerName:
     Description: load balancer name 
