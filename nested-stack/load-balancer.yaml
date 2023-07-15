@@ -60,3 +60,14 @@ Resources:
       DefaultActions:
         - Type: forward
           TargetGroupArn: !Ref TargetGroup
+Outputs:
+  LoadBalancerListener:
+    Description: The ARN of the Load Balancer Listener
+    Value: !Ref LoadBalancerListener
+    Export:
+      Name: LoadBalancerListener
+  TargetGroup:
+    Description: The ARN of the Target Group
+    Value: !Ref TargetGroup
+    Export:
+      Name: TargetGroup

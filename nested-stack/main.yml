@@ -26,7 +26,7 @@ Resources:
         MinInstanceNo: 1
         MaxInstanceNo: 4
         DesiredInstanceNo: 1
-        EcsHostSubnets: !Ref EcsHostSubnets
+        EcsHostSubnets: !Join [",", !Ref EcsHostSubnets]
 
   LoadBalancerStack:
     Type: AWS::CloudFormation::Stack
@@ -42,24 +42,20 @@ Resources:
     Properties:
       TemplateURL: https://cf-nest-stck-code.s3.amazonaws.com/ecs-services-tasks.yaml
       Parameters:
-        FargateSecurityGroup: !GetAtt EFSStack.Outputs.FargateSecurityGroupId
         VpcId: !Ref VpcId
         FargateServiceName: "fargate-service"
-
         FargateServiceDesiredCount: 1
-
         FargateContainerUrl: "nginx:latest"
-
         FargateTaskDefinitionName: "fargate-nginx-task"
-
         MyServiceName: "nginx-service"
-
         NginxServiceDesiredCount: 1
-
         NginxContainerUrl: "nginx:latest"
-
         NginxTaskDefinitionName: "nginx-task"
-
+        LoadBalancerListener: {"Fn::ImportValue" : "LoadBalancerListener"} 
+        TargetGroup: !GetAtt LoadBalancerStack.Outputs.TargetGroup
+        Cluster: !GetAtt ECSClusterStack.Outputs.Cluster
+        EcsHostSubnets: !GetAtt ECSClusterStack.Outputs.EcsHostSubnets
+        
   EFSStack:
     Type: AWS::CloudFormation::Stack
     Properties:

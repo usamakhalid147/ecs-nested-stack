@@ -13,23 +13,6 @@ Parameters:
     Type: String
 
 Resources:
-  FargateSecurityGroup:
-    Type: "AWS::EC2::SecurityGroup"
-    Properties:
-      GroupDescription: !Sub ${AWS::StackName}-FargateService
-      VpcId: !Ref VpcId
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: '80'
-          ToPort: '80'
-          CidrIp: 0.0.0.0/0  # Allow incoming traffic on port 80
-        - IpProtocol: tcp
-          FromPort: '2049'
-          ToPort: '2049'
-          CidrIp: 0.0.0.0/0
-      Tags:
-        - Key: environment
-          Value: !Ref EnvironmentName
 
   EfsSecurityGroup:
     Type: "AWS::EC2::SecurityGroup"
@@ -62,8 +45,3 @@ Resources:
       FileSystemId: !Ref EFSFileSystem
       SubnetId: !Select [ 0, !Ref EcsHostSubnets ]  # add mount target to the first subnet
       SecurityGroups: [!GetAtt EfsSecurityGroup.GroupId]
-
-Outputs:
-  FargateSecurityGroupId:
-    Description: The ID of the Fargate security group
-    Value: !Ref FargateSecurityGroup

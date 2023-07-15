@@ -13,6 +13,9 @@ Parameters:
   EnvironmentName:
     Type: String
     Default: "prod"
+  EcsHostSubnets:
+    Description: Create ECS Cluster Hosts in these subnets.
+    Type: List<AWS::EC2::Subnet::Id>
 
   ClusterSize:
     Description: How many ECS hosts do you want to initially deploy?
@@ -165,3 +168,14 @@ Resources:
     #     MaxBatchSize: 1
     #     PauseTime: PT15M
     #     WaitOnResourceSignals: true
+Outputs:
+  Cluster:
+    Description: The ARN of the ECS Cluster
+    Value: !Ref Cluster
+    Export:
+      Name: Cluster
+  EcsHostSubnets:
+    Description: The subnets where the ECS hosts are deployed
+    Value: !Join [",", !Ref EcsHostSubnets]
+    Export:
+      Name: EcsHostSubnets

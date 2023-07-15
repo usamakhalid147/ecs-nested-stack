@@ -5,6 +5,14 @@ Description: |
 
 Parameters:
 Parameters:
+  LoadBalancerListener:
+    Type: String
+  TargetGroup:
+    Type: String
+  Cluster:
+    Type: String
+  EcsHostSubnets:
+    Type: CommaDelimitedList
   VpcId:
     Description: The ID of the existing VPC
     Type: AWS::EC2::VPC::Id
@@ -118,7 +126,23 @@ Resources:
       RoleARN: !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService
       ScalableDimension: ecs:service:DesiredCount
       ServiceNamespace: ecs
-
+  FargateSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: !Sub ${AWS::StackName}-FargateService
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: 0.0.0.0/0  # Allow incoming traffic on port 80
+        - IpProtocol: tcp
+          FromPort: '2049'
+          ToPort: '2049'
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: environment
+          Value: !Ref EnvironmentName
   ECSServiceScalingPolicy:
     Type: AWS::ApplicationAutoScaling::ScalingPolicy
     Properties:
@@ -171,8 +195,7 @@ Resources:
       NetworkConfiguration:
         AwsvpcConfiguration:
           Subnets: !Ref EcsHostSubnets
-          SecurityGroups: 
-            - !GetAtt FargateSecurityGroup.GroupId  # Use the newly created Fargate security group
+          SecurityGroups: !Ref FargateSecurityGroup # Use the newly created Fargate security group
           AssignPublicIp: ENABLED
       LaunchType: FARGATE
       LoadBalancers:
