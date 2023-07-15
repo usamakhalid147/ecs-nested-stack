@@ -62,3 +62,8 @@ Resources:
       FileSystemId: !Ref EFSFileSystem
       SubnetId: !Select [ 0, !Ref EcsHostSubnets ]  # add mount target to the first subnet
       SecurityGroups: [!GetAtt EfsSecurityGroup.GroupId]
+
+Outputs:
+  FargateSecurityGroupId:
+    Description: The ID of the Fargate security group
+    Value: !Ref FargateSecurityGroup

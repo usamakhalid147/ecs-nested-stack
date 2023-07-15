@@ -35,13 +35,14 @@ Resources:
       Parameters:
         VpcId: !Ref VpcId
         LoadbalancerName: "network-lb"
-        AlbSubnets: !Ref AlbSubnets
+        AlbSubnets: !Join [",", !Ref AlbSubnets]
 
   ECSServicesTasksStack:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: https://cf-nest-stck-code.s3.amazonaws.com/ecs-services-tasks.yaml
       Parameters:
+        FargateSecurityGroup: !GetAtt EFSStack.Outputs.FargateSecurityGroupId
         VpcId: !Ref VpcId
         FargateServiceName: "fargate-service"
 
