@@ -138,6 +138,7 @@ Resources:
             set -o errexit
 
             yum -yq install aws-cfn-bootstrap
+            yum -yq install amazon-efs-utils  # Add this line
             /opt/aws/bin/cfn-init -v --region ${AWS::Region} --stack ${AWS::StackName} --resource LaunchConfiguration
             /opt/aws/bin/cfn-signal -e $? --region ${AWS::Region} --stack ${AWS::StackName} --resource AutoScalingGroup
       Metadata:
@@ -179,3 +180,8 @@ Outputs:
     Value: !Join [",", !Ref EcsHostSubnets]
     Export:
       Name: EcsHostSubnets
+  EcsHostSecurityGroup:
+    Description: The security group for the ECS hosts
+    Value: !Ref EcsHostSecurityGroup
+    Export:
+      Name: EcsHostSecurityGroup

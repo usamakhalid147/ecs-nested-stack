@@ -4,8 +4,9 @@ Description: |
   ECS Cluster
 
 Parameters:
-Parameters:
-  LoadBalancerListener:
+  EcsHostSecurityGroup:
+    Type: String
+  EFSFileSystem:
     Type: String
   TargetGroup:
     Type: String
@@ -13,6 +14,8 @@ Parameters:
     Type: String
   EcsHostSubnets:
     Type: CommaDelimitedList
+  EnvironmentName:
+    Type: String
   VpcId:
     Description: The ID of the existing VPC
     Type: AWS::EC2::VPC::Id
@@ -80,7 +83,6 @@ Resources:
 
   MyECSService:
     Type: AWS::ECS::Service
-    DependsOn: LoadBalancerListener
     Properties:
       ServiceName: !Ref MyServiceName
       Cluster: !Ref Cluster
@@ -90,7 +92,7 @@ Resources:
         AwsvpcConfiguration:
           Subnets: !Ref EcsHostSubnets  # Specify your subnets here
           SecurityGroups: 
-            - !GetAtt EcsHostSecurityGroup.GroupId  # Specify your security groups here
+            - !Ref EcsHostSecurityGroup # Specify your security groups here
       LoadBalancers:
         - TargetGroupArn: !Ref TargetGroup
           ContainerName: MyContainer
@@ -107,13 +109,23 @@ Resources:
           Image: !Ref NginxContainerUrl
           Essential: true
           Memory: 300
-          Cpu: 256  # Add this line to set CPU value
+          Cpu: 256
           PortMappings:
             - ContainerPort: 80
-      NetworkMode: awsvpc  # Change this line to set network type to awsvpc
+          MountPoints:  # Add a mount point for the EFS volume
+            - ContainerPath: "/efs"
+              SourceVolume: "efs"
+      NetworkMode: awsvpc
       RequiresCompatibilities:
         - EC2
       ExecutionRoleArn: !GetAtt ECSServiceRole.Arn
+      Volumes:  # Define the EFS volume
+        - Name: "efs"
+          EFSVolumeConfiguration:
+            FilesystemId: !Ref EFSFileSystem
+            RootDirectory: "/"
+            TransitEncryption: 'ENABLED'
+      TaskRoleArn: !GetAtt ECSServiceRole.Arn
 
 
   ECSServiceScalableTarget:
@@ -186,23 +198,22 @@ Resources:
 
   FargateService:
     Type: AWS::ECS::Service
-    DependsOn: LoadBalancerListener
     Properties:
       ServiceName: !Ref FargateServiceName
       Cluster: !Ref Cluster
-      DesiredCount: !Ref FargateServiceDesiredCount
+      DesiredCount: !Ref FargateServiceDesiredCount  # Ensure this is a number
       TaskDefinition: !Ref FargateTaskDefinition
       NetworkConfiguration:
         AwsvpcConfiguration:
           Subnets: !Ref EcsHostSubnets
-          SecurityGroups: !Ref FargateSecurityGroup # Use the newly created Fargate security group
+          SecurityGroups: 
+            - !Ref FargateSecurityGroup  # Ensure this is an array
           AssignPublicIp: ENABLED
       LaunchType: FARGATE
       LoadBalancers:
         - TargetGroupArn: !Ref TargetGroup
           ContainerName: MyContainerfargate
-          ContainerPort: 80
-
+          ContainerPort: 80  # Ensure this is a number
 
   FargateServiceScalableTarget:
     Type: AWS::ApplicationAutoScaling::ScalableTarget

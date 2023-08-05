@@ -45,3 +45,9 @@ Resources:
       FileSystemId: !Ref EFSFileSystem
       SubnetId: !Select [ 0, !Ref EcsHostSubnets ]  # add mount target to the first subnet
       SecurityGroups: [!GetAtt EfsSecurityGroup.GroupId]
+Outputs:
+  EFSFileSystem:
+    Description: The ID of the EFS file system
+    Value: !Ref EFSFileSystem
+    Export:
+      Name: EFSFileSystem
