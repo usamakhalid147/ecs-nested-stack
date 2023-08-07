@@ -180,19 +180,27 @@ Resources:
         - Key: environment1
           Value: !Ref EnvironmentName1
         - Key: environment2
+          PropagateAtLaunch: true
           Value: !Ref EnvironmentName2
+          PropagateAtLaunch: true
         - Key: environment3
           Value:  staging
+          PropagateAtLaunch: true
         - Key: environment4
           Value:  staging
+          PropagateAtLaunch: true
         - Key: environment5
           Value:  staging
+          PropagateAtLaunch: true
         - Key: environment6
           Value:  staging
+          PropagateAtLaunch: true
         - Key: environment7
           Value:  staging
+          PropagateAtLaunch: true
         - Key: environment8
           Value:  staging
+          PropagateAtLaunch: true
         - Key: Name
           Value: !Sub ${AWS::StackName} - ECS Host
           PropagateAtLaunch: true
