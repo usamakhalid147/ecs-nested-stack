@@ -11,6 +11,10 @@ Parameters:
     Type: List<AWS::EC2::Subnet::Id>
   EnvironmentName:
     Type: String
+  EnvironmentName1:
+    Type: String
+  EnvironmentName2:
+    Type: String
 
 Resources:
 
@@ -27,6 +31,22 @@ Resources:
       Tags:
         - Key: environment
           Value: !Ref EnvironmentName
+        - Key: environment1
+          Value: !Ref EnvironmentName1
+        - Key: environment2
+          Value: !Ref EnvironmentName2
+        - Key: environment3
+          Value:  staging
+        - Key: environment4
+          Value:  staging
+        - Key: environment5
+          Value:  staging
+        - Key: environment6
+          Value:  staging
+        - Key: environment7
+          Value:  staging
+        - Key: environment8
+          Value:  staging
 
   EFSFileSystem:
     Type: "AWS::EFS::FileSystem"
@@ -38,6 +58,22 @@ Resources:
           Value: !Sub ${AWS::StackName}-efs
         - Key: environment
           Value: !Ref EnvironmentName
+        - Key: environment1
+          Value: !Ref EnvironmentName1
+        - Key: environment2
+          Value: !Ref EnvironmentName2
+        - Key: environment3
+          Value:  staging
+        - Key: environment4
+          Value:  staging
+        - Key: environment5
+          Value:  staging
+        - Key: environment6
+          Value:  staging
+        - Key: environment7
+          Value:  staging
+        - Key: environment8
+          Value:  staging
 
   EFSMountTargetA:
     Type: "AWS::EFS::MountTarget"

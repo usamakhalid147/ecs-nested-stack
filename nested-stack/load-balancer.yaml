@@ -4,7 +4,6 @@ Description: |
   ECS Cluster
 
 Parameters:
-Parameters:
   VpcId:
     Description: The ID of the existing VPC
     Type: AWS::EC2::VPC::Id
@@ -15,16 +14,17 @@ Parameters:
   LoadbalancerName:
     Description: load balancer name 
     Type: String
-    Default: "network-lb"
+    Default: "application-lb"
 
   EnvironmentName:
     Type: String
     Default: "prod"
+
 Resources:
   LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Type: "network"
+      Type: "application"
       Subnets: !Ref AlbSubnets
       Scheme: "internet-facing"
       Tags:
@@ -33,17 +33,33 @@ Resources:
         - Key: Name
           Value: !Ref LoadbalancerName
 
-
-  TargetGroup:
+  ECSTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     DependsOn: LoadBalancer
     Properties:
       VpcId: !Ref VpcId
       Port: 80
-      Protocol: TCP
-      TargetType: ip  # Change target type to ip
+      Protocol: HTTP
+      TargetType: ip
       HealthCheckIntervalSeconds: 30
-      HealthCheckProtocol: TCP
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 10
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 3
+      Tags:
+        - Key: environment
+          Value: !Ref EnvironmentName
+
+  FargateTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn: LoadBalancer
+    Properties:
+      VpcId: !Ref VpcId
+      Port: 80
+      Protocol: HTTP
+      TargetType: ip
+      HealthCheckIntervalSeconds: 30
+      HealthCheckProtocol: HTTP
       HealthCheckTimeoutSeconds: 10
       HealthyThresholdCount: 3
       UnhealthyThresholdCount: 3
@@ -56,18 +72,48 @@ Resources:
     Properties:
       LoadBalancerArn: !Ref LoadBalancer
       Port: 80
-      Protocol: TCP
+      Protocol: HTTP
       DefaultActions:
         - Type: forward
-          TargetGroupArn: !Ref TargetGroup
+          TargetGroupArn: !Ref ECSTargetGroup
+
+  ListenerRuleForECSService:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref ECSTargetGroup
+      Conditions:
+        - Field: host-header
+          Values: ["pds.example.com"]
+      ListenerArn: !Ref LoadBalancerListener
+      Priority: 1
+
+  ListenerRuleForFargateService:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref FargateTargetGroup
+      Conditions:
+        - Field: host-header
+          Values: ["pds2.example.com"]
+      ListenerArn: !Ref LoadBalancerListener
+      Priority: 2
+
 Outputs:
   LoadBalancerListener:
     Description: The ARN of the Load Balancer Listener
     Value: !Ref LoadBalancerListener
     Export:
       Name: LoadBalancerListener
-  TargetGroup:
-    Description: The ARN of the Target Group
-    Value: !Ref TargetGroup
+  ECSTargetGroup:
+    Description: The ARN of the ECS Target Group
+    Value: !Ref ECSTargetGroup
     Export:
-      Name: TargetGroup
+      Name: ECSTargetGroup
+  FargateTargetGroup:
+    Description: The ARN of the Fargate Target Group
+    Value: !Ref FargateTargetGroup
+    Export:
+      Name: FargateTargetGroup

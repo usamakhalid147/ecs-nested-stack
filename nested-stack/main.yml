@@ -17,11 +17,14 @@ Resources:
   ECSClusterStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: https://testing-cfn-test.s3.amazonaws.com/ecs-cluster.yaml
+      TemplateURL: https://files-navigate.s3.amazonaws.com/ecs-cluster.yaml
       Parameters:
         VpcId: !Ref VpcId
         ClusterName: "prod-ecs-cluster"
         InstanceType: "t2.micro"
+        EnvironmentName: "prod"
+        EnvironmentName1: "prod"
+        EnvironmentName2: "prod"
         KeyName: !Ref KeyName
         MinInstanceNo: 1
         MaxInstanceNo: 4
@@ -31,7 +34,7 @@ Resources:
   LoadBalancerStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: https://testing-cfn-test.s3.amazonaws.com/load-balancer.yaml
+      TemplateURL: https://files-navigate.s3.amazonaws.com/load-balancer.yaml
       Parameters:
         VpcId: !Ref VpcId
         LoadbalancerName: "network-lb"
@@ -41,7 +44,7 @@ Resources:
     Type: AWS::CloudFormation::Stack
     DependsOn: [LoadBalancerStack, EFSStack]
     Properties:
-      TemplateURL: https://testing-cfn-test.s3.amazonaws.com/ecs-services-tasks.yaml
+      TemplateURL: https://files-navigate.s3.amazonaws.com/ecs-services-tasks.yaml
       Parameters:
         VpcId: !Ref VpcId
         FargateServiceName: "fargate-service"
@@ -49,21 +52,26 @@ Resources:
         EcsHostSecurityGroup: !GetAtt ECSClusterStack.Outputs.EcsHostSecurityGroup
         FargateServiceDesiredCount: 1
         EnvironmentName: "prod"
+        EnvironmentName1: "prod"
+        EnvironmentName2: "prod"
         FargateContainerUrl: "nginx:latest"
         FargateTaskDefinitionName: "fargate-nginx-task"
         MyServiceName: "nginx-service"
         NginxServiceDesiredCount: 1
         NginxContainerUrl: "nginx:latest"
         NginxTaskDefinitionName: "nginx-task"
-        TargetGroup: !GetAtt LoadBalancerStack.Outputs.TargetGroup
+        ECSTargetGroup: !GetAtt LoadBalancerStack.Outputs.ECSTargetGroup
+        FargateTargetGroup: !GetAtt LoadBalancerStack.Outputs.FargateTargetGroup
         Cluster: !GetAtt ECSClusterStack.Outputs.Cluster
         EcsHostSubnets: !GetAtt ECSClusterStack.Outputs.EcsHostSubnets
         
   EFSStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: https://testing-cfn-test.s3.amazonaws.com/efs.yaml
+      TemplateURL: https://files-navigate.s3.amazonaws.com/efs.yaml
       Parameters:
         VpcId: !Ref VpcId
         EnvironmentName: "prod"
+        EnvironmentName1: "prod"
+        EnvironmentName2: "prod"
         EcsHostSubnets: !Join [",", !Ref EcsHostSubnets]

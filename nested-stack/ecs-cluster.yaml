@@ -16,6 +16,10 @@ Parameters:
   EcsHostSubnets:
     Description: Create ECS Cluster Hosts in these subnets.
     Type: List<AWS::EC2::Subnet::Id>
+  EnvironmentName1:
+    Type: String
+  EnvironmentName2:
+    Type: String
 
   ClusterSize:
     Description: How many ECS hosts do you want to initially deploy?
@@ -115,6 +119,22 @@ Resources:
       Tags:
         - Key: environment
           Value: !Ref EnvironmentName
+        - Key: environment1
+          Value: !Ref EnvironmentName1
+        - Key: environment2
+          Value: !Ref EnvironmentName2
+        - Key: environment3
+          Value:  staging
+        - Key: environment4
+          Value:  staging
+        - Key: environment5
+          Value:  staging
+        - Key: environment6
+          Value:  staging
+        - Key: environment7
+          Value:  staging
+        - Key: environment8
+          Value:  staging
 
   Cluster:
     Type: AWS::ECS::Cluster
@@ -157,6 +177,22 @@ Resources:
       MaxSize: !Ref MaxInstanceNo
       DesiredCapacity: !Ref DesiredInstanceNo
       Tags:
+        - Key: environment1
+          Value: !Ref EnvironmentName1
+        - Key: environment2
+          Value: !Ref EnvironmentName2
+        - Key: environment3
+          Value:  staging
+        - Key: environment4
+          Value:  staging
+        - Key: environment5
+          Value:  staging
+        - Key: environment6
+          Value:  staging
+        - Key: environment7
+          Value:  staging
+        - Key: environment8
+          Value:  staging
         - Key: Name
           Value: !Sub ${AWS::StackName} - ECS Host
           PropagateAtLaunch: true

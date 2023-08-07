@@ -8,13 +8,19 @@ Parameters:
     Type: String
   EFSFileSystem:
     Type: String
-  TargetGroup:
+  FargateTargetGroup:
+    Type: String
+  ECSTargetGroup:
     Type: String
   Cluster:
     Type: String
   EcsHostSubnets:
     Type: CommaDelimitedList
   EnvironmentName:
+    Type: String
+  EnvironmentName1:
+    Type: String
+  EnvironmentName2:
     Type: String
   VpcId:
     Description: The ID of the existing VPC
@@ -94,7 +100,7 @@ Resources:
           SecurityGroups: 
             - !Ref EcsHostSecurityGroup # Specify your security groups here
       LoadBalancers:
-        - TargetGroupArn: !Ref TargetGroup
+        - TargetGroupArn: !ImportValue ECSTargetGroup # Use the ECS target group
           ContainerName: MyContainer
           ContainerPort: 80
 
@@ -155,6 +161,22 @@ Resources:
       Tags:
         - Key: environment
           Value: !Ref EnvironmentName
+        - Key: environment1
+          Value: !Ref EnvironmentName1
+        - Key: environment2
+          Value: !Ref EnvironmentName2
+        - Key: environment3
+          Value:  staging
+        - Key: environment4
+          Value:  staging
+        - Key: environment5
+          Value:  staging
+        - Key: environment6
+          Value:  staging
+        - Key: environment7
+          Value:  staging
+        - Key: environment8
+          Value:  staging
   ECSServiceScalingPolicy:
     Type: AWS::ApplicationAutoScaling::ScalingPolicy
     Properties:
@@ -211,7 +233,7 @@ Resources:
           AssignPublicIp: ENABLED
       LaunchType: FARGATE
       LoadBalancers:
-        - TargetGroupArn: !Ref TargetGroup
+        - TargetGroupArn: !ImportValue FargateTargetGroup # Use the Fargate target group
           ContainerName: MyContainerfargate
           ContainerPort: 80  # Ensure this is a number
 
