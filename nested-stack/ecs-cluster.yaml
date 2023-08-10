@@ -179,8 +179,8 @@ Resources:
       Tags:
         - Key: environment1
           Value: !Ref EnvironmentName1
-        - Key: environment2
           PropagateAtLaunch: true
+        - Key: environment2
           Value: !Ref EnvironmentName2
           PropagateAtLaunch: true
         - Key: environment3

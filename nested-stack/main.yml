@@ -37,7 +37,7 @@ Resources:
       TemplateURL: https://files-navigate.s3.amazonaws.com/load-balancer.yaml
       Parameters:
         VpcId: !Ref VpcId
-        LoadbalancerName: "network-lb"
+        LoadbalancerName: "application-lb"
         AlbSubnets: !Join [",", !Ref AlbSubnets]
 
   ECSServicesTasksStack:

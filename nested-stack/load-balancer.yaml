@@ -25,6 +25,7 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
       Type: "application"
+      Name: !Ref LoadbalancerName
       Subnets: !Ref AlbSubnets
       Scheme: "internet-facing"
       Tags:
